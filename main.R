@@ -18,9 +18,12 @@ colnames(vt_data)<- c("roles","certified","lang","more.lang",
                       "hours","days","community","distance",
                       "vaccine","exp","cv","name","email",
                       "phone","zip","about","waiver","date","vtID")
-vt_dist_longlat <- vt_data %>% 
+vt_close_zip <- vt_data %>% 
   select("vtID","zip","distance") %>% 
   mutate(zip = as.character(zip)) %>% 
-  left_join(zip_data,by = "zip",keep = T) %>% 
-  select("vtID","longlat","distance","State")
+  left_join(zip_data,by = "zip",keep = T) %>%
+  select("vtID","longlat","distance","State")%>%
+  mutate(state = State,vtLonglat = longlat, longlat = NULL, State = NULL) %>% 
+  pmap(get_closest_zips,zip_data)
+  
 
