@@ -2,7 +2,6 @@
 
 
 get_closest_zips <- function(vtID,distance, state,vtLonglat,zip_data){
-  print(vtLonglat)
   distance  <- ifelse(distance == 0,10,distance)
   closest_zips <- zip_data %>% 
     filter(State == state) %>% 
@@ -15,7 +14,7 @@ get_closest_zips <- function(vtID,distance, state,vtLonglat,zip_data){
     set_names(c("zip","dist")) %>%
     filter(dist <= distance) %>%
     arrange(dist) %>% 
-    select(zip) %>% c()
+    select(zip) %>% set_names(vtID) %>% c()
     
   return(closest_zips)
 }
