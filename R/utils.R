@@ -18,3 +18,8 @@ get_closest_zips <- function(vtID,distance, state,vtLonglat,zip_data){
     
   return(closest_zips)
 }
+
+# split at space and return the 1st element
+split_discard <- function(string,pattern){
+  str_split(string," ")[[1]]
+}
