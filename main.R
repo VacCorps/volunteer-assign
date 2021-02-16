@@ -1,5 +1,6 @@
 library(tidyverse)
 library(magrittr)
+library(lubridate)
 library(geosphere)
 library(rstudioapi)
 
@@ -14,12 +15,14 @@ zip_data <- read_delim("Database/us-zip-code-latitude-and-longitude.csv",delim =
 
 # select the most recent volunteer form data
 file_path <- selectFile()
-vt_base <- read_csv(file_path) %>% 
-  mutate(ID = paste0("vt",row_number())) %>%
-  set_colnames(c("roles","certified","lang","more.lang",
-                      "hours","days","community","distance",
-                      "vaccine","exp","cv","name","email",
-                      "phone","zip","about","waiver","date","vtID"))
+vt_base <- read_csv(file_path,skip = 1,
+                    col_names = c("roles","certified","lang","more.lang",
+                                                     "hours","days","community","distance",
+                                                     "vaccine","exp","cv","name","email",
+                                                     "phone","zip","age_consent", "about",
+                                                     "waiver","entryid","uid")) %>%
+  drop_na(uid) %>%
+  mutate(vtID = paste0("vt",row_number()))
 
 
 # a long tibble of two columns, volunteer ID and Zip code that lies within their preferred driving distance
@@ -28,6 +31,7 @@ vt_close_zip <- vt_base %>%
   mutate(zip = as.character(zip)) %>% 
   left_join(zip_data,by = "zip",keep = T) %>%
   select("vtID","longlat","distance","State")%>%
+  drop_na() %>%
   mutate(state = State,vtLonglat = longlat, longlat = NULL, State = NULL) %>% 
   pmap(get_closest_zips,zip_data)%>% 
   map_df(~as.data.frame(.x)) %>% 
@@ -37,8 +41,13 @@ vt_close_zip <- vt_base %>%
 # a long tibble of two columns, volunteer ID and their preferred role
 vt_roles <- vt_base %>% 
   select("vtID","roles") %>% 
-  pmap_dfc(~set_names(str_split(..2,"\n"),..1)) %>% 
-  pivot_longer(cols =everything(), names_to = "vtID",values_to = "role")
+  pmap_dfr(~set_names(str_split(..2,"\n"),..1)) %>% 
+  pivot_longer(cols = starts_with("vt"),names_to = "vtID",values_to= "role") %>% 
+  drop_na(role)
+
+vt_roles_counts <- vt_roles
+  group_by(role) %>% 
+  count()
 
 # a long tibble of three columns, volunteer ID, the duration they wish to volunteer and their preferred days
 vt_day_time <- vt_base %>%
@@ -73,8 +82,8 @@ vc_data <- vc_base %>%
   select(where(function(x){any(!is.na(x))}))%>% 
   mutate(across(starts_with("dt"),str_extract,"\\d{1}/\\d{2}/\\d{4}")) %>% 
   mutate(across(starts_with("dt"),as.Date,"%m/%d/%Y")) %>% 
-  mutate(across(starts_with("dt"),wday,TRUE,FALSE))%>% 
-  pivot_longer(starts_with("dt"),values_to = "days") %>% 
+  pivot_longer(starts_with("dt"),values_to = "dates") %>% 
+  mutate(days = wday(dates,TRUE,FALSE)) %>%  
   mutate(roles = str_split(roles,"\n")) %>% 
   unnest(roles) %>% 
   drop_na() %>%
@@ -83,7 +92,7 @@ vc_data <- vc_base %>%
 
 # Combine VC abd VT data to get specific volunteer lists
 vc_vt_matches <- vc_data %>% 
-  inner_join(vt_data,by = c("zip","days","roles"="role")) %>%
+  full_join(vt_data,by = c("zip","days","roles"="role")) %>%
   inner_join(vt_base%>%select(name,email,phone,vtID),by = "vtID") %>% 
   select(!zip & !vtID) %>%
   inner_join(vc_base %>% select(name,email,phone,addr,ID),by = "ID") %>%
