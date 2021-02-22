@@ -8,20 +8,18 @@
 #
 
 library(shiny)
-library(shinyjs)
 library(shinydashboard)
 library(shinybusy)
-library(waiter)
 library(DT)
 # Define UI for application that draws a histogram
 ui <- shinyUI(navbarPage("VacCorps Volunteer Dashboard",inverse = T,id="pagenav",
                          
                    tabPanel("Volunteer Data",value = "data",
-                            add_busy_spinner(position = "full-page"),
+                            add_busy_spinner("dots",position = "full-page"),
                             fluidPage(
                               fluidRow(
                                 column(3, 
-                                       textInput("txt_zip","Center Zip Code",
+                                       textInput("txt_zip","5 Digit Zip for the Vaccination Center",
                                                  value = "27703",width = validateCssUnit("100%"))
                                        )
           

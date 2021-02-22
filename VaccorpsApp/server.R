@@ -8,16 +8,11 @@
 #
 
 library(shiny)
-library(shinyjs)
 library(DT)
-library(waiter)
-library(shinydashboard)
 library(tidyverse)
 library(magrittr)
-library(lubridate)
 library(geosphere)
 library(shinybusy)
-library(rstudioapi)
 
 source("../R/utils.R")
 
