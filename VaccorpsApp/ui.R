@@ -19,10 +19,19 @@ ui <- shinyUI(navbarPage("VacCorps Volunteer Dashboard",inverse = T,id="pagenav"
                    tabPanel("Volunteer Data",value = "data",
                             add_busy_spinner(position = "full-page"),
                             fluidPage(
-                                sidebarLayout(
-                                    sidebarPanel = fileInput("btn_load_vt","Load Volunteer Data",accept = c(".csv")),
-                                    mainPanel = DT::DTOutput("tble_vt_data")
+                              fluidRow(
+                                column(3, 
+                                       textInput("txt_zip","Center Zip Code",
+                                                 value = "27703",width = validateCssUnit("100%"))
+                                       )
+          
+                              ),
+                              fluidRow(
+                                column( 10, offset = 1, 
+                                       DT::DTOutput("tble_vt_data")
                                 )
+                                
+                              )
                             ))
                    )
         )

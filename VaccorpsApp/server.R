@@ -24,10 +24,27 @@ source("../R/utils.R")
 # Define server logic required to draw a histogram
 shinyServer(function(input, output,session) {
     
-    w <- Waiter$new(id = "tble_vt_data",html = spin_1())
-    zip_data <- loadZipData("../Database/us-zip-code-latitude-and-longitude.csv")
+    zip_dist <- loadZipDistData("../Database/zip_dist.csv")
     vt_base <- loadVolunteerData("../Database/Volunteer Data.csv")
-    vt_data <- parseVolunteerData(zip_data,vt_base)
-    output$tble_vt_data <- renderDT(datatable(vt_data))
+    vt_data <- parseVolunteerData(zip_dist,vt_base) %>% group_by("vtID")
+    observe({
+        zip_code <- input$txt_zip
+        vt_output <- vt_data %>% 
+            filter(zip == zip_code) %>% 
+            select(vtID) %>%
+            distinct(vtID) %>%
+            inner_join(vt_base, by = "vtID") %>%
+            ungroup %>%
+            select("name","email","phone","lang","roles","days","hours")
+        output$tble_vt_data <- renderDT(datatable(vt_output,rownames = F,
+                                                  colnames = c("Name","E-Mail","Phone","Languages","Roles","Days","Hours"),
+                                                  extensions = 'Buttons', 
+                                                  options = list(
+                                                      dom = 'frtipB',
+                                                      buttons = c('copy', 'csv', 'excel')),
+                                                  filter=list(position = "top",clear = T, plain = F)),server = F)
+        
+    })
+    
     
 })
