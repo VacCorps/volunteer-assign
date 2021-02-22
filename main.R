@@ -6,74 +6,18 @@ library(rstudioapi)
 
 source("R/utils.R")
 #read the us zip data
-zip_data <- read_delim("Database/us-zip-code-latitude-and-longitude.csv",delim = ";") %>%
-  select("Zip","State","Latitude","Longitude") %>%
-  mutate(longlat = map2(Longitude,Latitude,c),
-         Latitude = NULL,
-         Longitude = NULL) %>%
-  rename(zip = Zip)
+zip_data <- loadZipData()
 
 # select the most recent volunteer form data
-file_path <- selectFile()
-vt_base <- read_csv(file_path,skip = 1,
-                    col_names = c("roles","certified","lang","more.lang",
-                                                     "hours","days","community","distance",
-                                                     "vaccine","exp","cv","name","email",
-                                                     "phone","zip","age_consent", "about",
-                                                     "waiver","entryid","uid")) %>%
-  drop_na(uid) %>%
-  mutate(vtID = paste0("vt",row_number()))
-
-
-# a long tibble of two columns, volunteer ID and Zip code that lies within their preferred driving distance
-vt_close_zip <- vt_base %>% 
-  select("vtID","zip","distance") %>% 
-  mutate(zip = as.character(zip)) %>% 
-  left_join(zip_data,by = "zip",keep = T) %>%
-  select("vtID","longlat","distance","State")%>%
-  drop_na() %>%
-  mutate(state = State,vtLonglat = longlat, longlat = NULL, State = NULL) %>% 
-  pmap(get_closest_zips,zip_data)%>% 
-  map_df(~as.data.frame(.x)) %>% 
-  pivot_longer(cols = vt_base$vtID,values_to = "zip",names_to = "vtID") %>% 
-  filter(!is.na(zip))
-
-# a long tibble of two columns, volunteer ID and their preferred role
-vt_roles <- vt_base %>% 
-  select("vtID","roles") %>% 
-  pmap_dfr(~set_names(str_split(..2,"\n"),..1)) %>% 
-  pivot_longer(cols = starts_with("vt"),names_to = "vtID",values_to= "role") %>% 
-  drop_na(role)
-
-vt_roles_counts <- vt_roles
-  group_by(role) %>% 
-  count()
-
-# a long tibble of three columns, volunteer ID, the duration they wish to volunteer and their preferred days
-vt_day_time <- vt_base %>%
-  select("vtID","hours","days") %>% 
-  separate(days,into = c("A","B","C","D","E","F","G","H"),sep = "\n",remove = T,fill = "right") %>%
-  pivot_longer(cols = everything()[-1:-2],values_to = "days") %>% filter(!(is.na(days))) %>% select(-name)
-  
-# combine all VT data into one DF for use with join functions on VC data
-vt_data <- vt_close_zip %>% 
-  inner_join(vt_roles,by = "vtID") %>%
-  inner_join(vt_day_time,by="vtID")
+file_path <- "Database/Volunteer Data.csv"
+vt_base <- loadVolunteerData(file_path)
+vt_data <- parseVolunteerData(zip_data,vt_base)
 
 # read vaccination data
 fpath = "test/Test_form_vaccination centers.csv" # replace with recent file
-vc_base <- read_csv(fpath,col_types ="cccccccccccccccccccccccc--") %>% 
-  set_colnames(c("roles","other_roles","edu","interp_lang","other_interp_lang",
-                 "reimburse","ppe","num_events","dt1","dt2","dt3","dt4","dt5",
-                 "dt6","dt7","dt8","dt9","dt10","deets","reqs","name","email",
-                 "phone","addr")) %>%
-  mutate(ID = paste0("vc",row_number()),
-         roles = paste(roles,other_roles,sep = "\n"),
-         other_roles = NULL,
-         interp_lang = paste(interp_lang,other_interp_lang,"\n"),
-         other_interp_lang = NULL,
-         num_events = NULL)
-# get all VC data to combine with VT data
+vc_base <- loadVaccinationCenterData(fpath)
+
+# parse VC data in a format that can be combined with VT data
 vc_data <- vc_base %>%
   mutate(reqs = NULL,deets =NULL,name = NULL, email = NULL,phone = NULL,
          interp_lang = NULL,edu = NULL, reimburse = NULL, ppe = NULL)%>%
