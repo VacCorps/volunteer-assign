@@ -6,7 +6,7 @@ library(rstudioapi)
 
 source("R/utils.R")
 #read the us zip data
-zip_data <- loadZipData()
+zip_data <- loadZipDistData()
 
 # select the most recent volunteer form data
 file_path <- "Database/Volunteer Data.csv"
