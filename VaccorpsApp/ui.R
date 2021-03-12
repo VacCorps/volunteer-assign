@@ -34,7 +34,8 @@ ui <- shinyUI(navbarPage("VacCorps Volunteer Dashboard",inverse = T,id="pagenav"
                                                                     "Vaccine preparation",
                                                                     "Cleaning/wiping surfaces",
                                                                     "Remote role - Appointment scheduling",
-                                                                    "Remote role - Volunteer scheduling"),
+                                                                    "Remote role - Volunteer scheduling",
+                                                                    "Wherever I'm needed"),
                                                          multiple = T,
                                                          width = validateCssUnit("100%")
                                                          )
