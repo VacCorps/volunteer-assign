@@ -49,7 +49,7 @@ loadVolunteerData <- function(fpath){
   vt_base <- read_csv(fpath,skip = 1,
                       col_names = c("roles","certified","lang","more.lang",
                                     "hours","days","community","distance",
-                                    "vaccine","exp","cv","name","email",
+                                    "vaccine","exp","name","email",
                                     "phone","zip","age_consent", "about",
                                     "waiver","entryid","uid")) %>%
     drop_na(uid) %>%
