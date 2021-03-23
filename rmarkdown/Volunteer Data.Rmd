@@ -18,6 +18,8 @@ library(magrittr)
 library(lubridate)
 library(geosphere)
 library(rstudioapi)
+library(scales)
+source("../R/utils.R")
 
 #read the us zip data
 zip_data <- read_delim("../Database/us-zip-code-latitude-and-longitude.csv",delim = ";") %>%
@@ -28,16 +30,12 @@ zip_data <- read_delim("../Database/us-zip-code-latitude-and-longitude.csv",deli
   rename(zip = Zip)
 
 # Replace the file path with the location of the most recent download
-file_path <- "C:/Users/spendse/Projects/VacCorps developement/wpforms-81-Volunteer-Registration-2021-02-15-22-28-22.csv"
-vt_base <- read_csv(file_path,skip = 1,
-                    col_names = c("roles","certified","lang","more.lang",
-                                                     "hours","days","community","distance",
-                                                     "vaccine","exp","cv","name","email",
-                                                     "phone","zip","age_consent", "about",
-                                                     "waiver","entryid","uid")) %>%
-  drop_na(uid) %>%
-  mutate(vtID = paste0("vt",row_number()))
+file_path <- "C:/Users/spendse/Projects/VacCorps developement/wpforms-81-Volunteer-Registration-2021-03-15-23-20-11.csv"
 
+vt_base <- loadVolunteerData(file_path)
+
+zip_dist <- loadZipDistData("../Database/zip_dist.csv")
+vt_data <- parseVolunteerData(zip_dist,vt_base)
 
 # get the roles NC volunteers are choosing
 vt_nc_roles_count <- vt_base %>% 
@@ -58,14 +56,28 @@ shape_data <- geojson_read("https://opendata.arcgis.com/datasets/d192da4d0ac249f
 shape_data <- tidy(shape_data,region = "CountyName")
 
 # get the Zip code to count
-zip_county_data <- read_csv("../Database/NC_zip_county.csv",skip = 1, col_types = c("c","c"),col_names = c("zip","county"))
+zip_county_data <- read_csv("../Database/NC_zip_county.csv",skip = 1, col_types = c("c","c"),col_names = c("zip","county")) %>% 
+  mutate(county = str_replace(county,"New","New Hanover"))
 
 vt_county_data <- vt_base %>% 
   select("vtID","zip") %>% 
   full_join(zip_county_data,by = "zip") %>%
+  select(vtID,county)%>%
+  distinct(vtID,county)%>%
   group_by(county) %>% 
   count %>% 
   drop_na
+
+vt_counties_served_data <- vt_data %>% 
+  select("vtID","zip") %>%
+  distinct(vtID,zip) %>% 
+  full_join(zip_county_data,by = "zip")%>%
+  select(vtID,county)%>%
+  distinct(vtID,county)%>%
+  group_by(county) %>% 
+  count %>% 
+  drop_na
+
 ```
 
 ## Volunteer preferred roles in NC
@@ -84,15 +96,77 @@ knitr::kable(vt_county_data,col.names = c("County","Number of volunteers"))
 
 ## NC Volunteers by county map
 
-```{r pressure, echo = F} 
-knitr::opts_chunk$set(fig.width = 24,fig.height = 16)
+```{r vt_counties, echo = F} 
+knitr::opts_chunk$set(fig.width = 48,fig.height = 32)
 shape_data_combined <- shape_data %>% left_join(vt_county_data, by = c("id"="county"))
 ggplot() +
   geom_polygon(data = shape_data_combined, aes(fill = n, x = long, y = lat, group = group)) +theme_void()+
   coord_map() +
-  scale_fill_distiller(name="Number",palette = "YlGnBu",direction = 1)
+  scale_fill_distiller(palette = "GnBu",direction = 1,trans = "log10") +
+  labs(title = "Counties our volunteers call home")
+  # scale_fill_continuous( low = "lightblue", 
+  #           high = "darkblue", 
+  #           na.value = "grey50")
+
+```
+
+```{r cl1,echo = F, include = F}
+graphics.off()
+```
+
+## NC Counties Served map
+
+```{r counties_served, echo = F} 
+knitr::opts_chunk$set(fig.width = 48,fig.height = 32)
+
+shape_data_combined2 <- shape_data %>% left_join(vt_counties_served_data, by = c("id"="county"))
+ggplot() +
+  geom_polygon(data = shape_data_combined2, aes(fill = n, x = long, y = lat, group = group)) +theme_void()+
+  coord_map() +
+  scale_fill_distiller(palette = "PuBuGn",direction = 1,trans = "log10")+
+  labs(title = "Counties served by our volunteers")
+  # scale_fill_continuous( low = "lightblue", 
+  #           high = "darkblue", 
+  #           na.value = "grey50")
+
+```
+
+```{r cl2,echo = F, include = F}
+graphics.off()
+```
+
+## NC Volunteers by county map (no title)
+
+```{r vt_counties2, echo = F} 
+knitr::opts_chunk$set(fig.width = 48,fig.height = 32)
+shape_data_combined3 <- shape_data %>% left_join(vt_county_data, by = c("id"="county"))
+ggplot() +
+  geom_polygon(data = shape_data_combined3, aes(fill = n, x = long, y = lat, group = group)) +theme_void()+
+  coord_map() +
+  scale_fill_distiller(palette = "GnBu",direction = 1,trans = "log10")
   # scale_fill_continuous( low = "lightblue", 
   #           high = "darkblue", 
   #           na.value = "grey50")
 ```
 
+```{r cl3,echo = F, include = F}
+graphics.off()
+```
+
+## NC Counties Served map (no title)
+
+```{r counties_served2, echo = F} 
+knitr::opts_chunk$set(fig.width = 48,fig.height = 32)
+shape_data_combined4 <- shape_data %>% left_join(vt_counties_served_data, by = c("id"="county"))
+ggplot() +
+  geom_polygon(data = shape_data_combined4, aes(fill = n, x = long, y = lat, group = group)) +theme_void()+
+  coord_map() +
+  scale_fill_distiller(palette = "PuBuGn",direction = 1,trans = "log10")
+  # scale_fill_continuous( low = "lightblue", 
+  #           high = "darkblue", 
+  #           na.value = "grey50")
+```
+
+```{r cl4,echo = F, include = F}
+graphics.off()
+```

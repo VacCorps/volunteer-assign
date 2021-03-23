@@ -63,7 +63,7 @@ parseVolunteerData <- function(zip_dist,vt_base){
     select("vtID","zip","distance") %>% 
     mutate(zip = as.character(zip)) %>% 
     inner_join(zip_dist,by = c("zip"="zip1")) %>% 
-    filter(distance.y < distance.x) %>% 
+    filter(distance.y <= distance.x+10) %>% 
     select("vtID","zip2") %>% 
     rename("zip"="zip2")
     
